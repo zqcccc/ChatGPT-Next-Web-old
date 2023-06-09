@@ -5,16 +5,16 @@ services:
     container_name: chatgpt-next-web
     image: 172232502/chatgpt-next-web
     ports:
-      - 3000:3000
+      - 3080:3000
     volumes:
       - './.env:/app/.env'
-    # environment:
-    #   - OPENAI_API_KEY=$OPENAI_API_KEY
-    #   - CODE=$CODE
-    #   - BASE_URL=$BASE_URL
-    #   - OPENAI_ORG_ID=$OPENAI_ORG_ID
-    #   - HIDE_USER_API_KEY=$HIDE_USER_API_KEY
-    #   - DISABLE_GPT4=DISABLE_GPT4
+    environment:
+      - OPENAI_API_KEY=$OPENAI_API_KEY
+      - CODE=$CODE
+      - BASE_URL=$BASE_URL
+      - OPENAI_ORG_ID=$OPENAI_ORG_ID
+      - HIDE_USER_API_KEY=$HIDE_USER_API_KEY
+      - DISABLE_GPT4=DISABLE_GPT4
 
   # chatgpt-next-web-proxy: 
   #   profiles: ["proxy"]

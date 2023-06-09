@@ -1,6 +1,9 @@
 name: Publish Docker image
 
 on:
+  push:
+    tags:
+      - v*
   workflow_dispatch:
   release:
     types: [published]
@@ -27,8 +30,10 @@ jobs:
         with:
           images: 172232502/chatgpt-next-web
           tags: |
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
             type=raw,value=latest
-            type=ref,event=tag
+        # type=ref,event=tag
+        # type=semver,pattern={{version}}
       
       - 
         name: Set up QEMU

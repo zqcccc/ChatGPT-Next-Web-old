@@ -3,8 +3,8 @@ import { getServerSideConfig } from "../config/server";
 
 export const OPENAI_URL = "api.openai.com";
 const DEFAULT_PROTOCOL = "https";
-const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
-const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
+const PROTOCOL = process.env.PROTOCOL || DEFAULT_PROTOCOL;
+const BASE_URL = process.env.BASE_URL || OPENAI_URL;
 const DISABLE_GPT4 = !!process.env.DISABLE_GPT4;
 
 export async function requestOpenai(req: NextRequest) {
@@ -19,6 +19,10 @@ export async function requestOpenai(req: NextRequest) {
 
   if (!baseUrl.startsWith("http")) {
     baseUrl = `${PROTOCOL}://${baseUrl}`;
+  }
+
+  if (baseUrl.endsWith('/')) {
+    baseUrl = baseUrl.slice(0, -1);
   }
 
   console.log("[Proxy] ", openaiPath);
@@ -39,6 +43,7 @@ export async function requestOpenai(req: NextRequest) {
   const fetchOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",
+      "Cache-Control": "no-store",
       Authorization: authValue,
       ...(process.env.OPENAI_ORG_ID && {
         "OpenAI-Organization": process.env.OPENAI_ORG_ID,
@@ -47,9 +52,10 @@ export async function requestOpenai(req: NextRequest) {
         "api-key": serverSideConfig.apiKey,
       }),
     },
-    cache: "no-store",
     method: req.method,
     body: req.body,
+    // to fix #2485: https://stackoverflow.com/questions/55920957/cloudflare-worker-typeerror-one-time-use-body
+    redirect: "manual",
     // @ts-ignore
     duplex: "half",
     signal: controller.signal,
@@ -85,8 +91,7 @@ export async function requestOpenai(req: NextRequest) {
     // to prevent browser prompt for credentials
     const newHeaders = new Headers(res.headers);
     newHeaders.delete("www-authenticate");
-
-    // to disbale ngnix buffering
+    // to disable nginx buffering
     newHeaders.set("X-Accel-Buffering", "no");
 
     return new Response(res.body, {

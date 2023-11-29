@@ -2,7 +2,7 @@
 
 require("../polyfill");
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, MutableRefObject, useRef } from "react";
 
 import styles from "./home.module.scss";
 
@@ -29,6 +29,7 @@ import { AuthPage } from "./auth";
 import { getClientConfig } from "../config/client";
 import { api } from "../client/api";
 import { useAccessStore } from "../store";
+import { TurnstileOptions, SupportedLanguages } from "./turnstile-types";
 
 export function Loading(props: { noLogo?: boolean }) {
   return (
@@ -178,7 +179,91 @@ export function useLoadData() {
   }, []);
 }
 
-export function Home() {
+const global = (typeof globalThis !== "undefined" ? globalThis : window) as any;
+let turnstileState =
+  typeof global.turnstile !== "undefined" ? "ready" : "unloaded";
+let ensureTurnstile: () => Promise<any>;
+
+// Functions responsible for loading the turnstile api, while also making sure
+// to only load it once
+{
+  const TURNSTILE_LOAD_FUNCTION = "cf__reactTurnstileOnLoad";
+  const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+
+  let turnstileLoad: {
+    resolve: (value?: any) => void;
+    reject: (reason?: any) => void;
+  };
+  const turnstileLoadPromise = new Promise((resolve, reject) => {
+    turnstileLoad = { resolve, reject };
+    if (turnstileState === "ready") resolve(undefined);
+  });
+
+  ensureTurnstile = () => {
+    if (turnstileState === "unloaded") {
+      turnstileState = "loading";
+      global[TURNSTILE_LOAD_FUNCTION] = () => {
+        turnstileLoad.resolve();
+        turnstileState = "ready";
+        delete global[TURNSTILE_LOAD_FUNCTION];
+      };
+      const url = `${TURNSTILE_SRC}?onload=${TURNSTILE_LOAD_FUNCTION}&render=explicit`;
+      const script = document.createElement("script");
+      script.src = url;
+      script.async = true;
+      script.addEventListener("error", () => {
+        turnstileLoad.reject("Failed to load Turnstile.");
+        delete global[TURNSTILE_LOAD_FUNCTION];
+      });
+      document.head.appendChild(script);
+    }
+    return turnstileLoadPromise;
+  };
+}
+export function useTurnstile({
+  ref,
+}: {
+  ref: MutableRefObject<HTMLDivElement | null>;
+}) {
+  const [isOk, setIsOk] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    let widgetId = "";
+    (async () => {
+      if (turnstileState !== "ready") {
+        try {
+          await ensureTurnstile();
+        } catch (e) {
+          console.log(
+            "%c error when load turnstile: ",
+            "font-size:12px;background-color: #EA7E5C;color:#fff;",
+            e,
+          );
+          return;
+        }
+      }
+      const turnstileOptions: TurnstileOptions = {
+        sitekey: "0x4AAAAAAAIzwyAw8mkZB3UG",
+        callback: (token: string) => setIsOk(true),
+      };
+      widgetId = window.turnstile.render(ref.current!, turnstileOptions);
+      console.log(
+        "%c widgetId: ",
+        "font-size:12px;background-color: #7D8590;color:#fff;",
+        widgetId,
+      );
+    })();
+    return () => {
+      if (widgetId) window.turnstile.remove(widgetId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ref.current]);
+
+  return { isOk };
+}
+
+export function HomeInner() {
   useSwitchTheme();
   useLoadData();
   useHtmlLang();
@@ -199,4 +284,15 @@ export function Home() {
       </Router>
     </ErrorBoundary>
   );
+}
+
+export function Home() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { isOk } = useTurnstile({ ref });
+
+  if (!isOk) {
+    return <div ref={ref}></div>;
+  }
+
+  return <HomeInner />;
 }

@@ -23,6 +23,14 @@ export const metadata: Metadata = {
   },
 };
 
+// declare global {
+//   interface Window {
+//     onloadTurnstileCallback: any;
+//   }
+//   var turnstile: any;
+// }
+// typeof window !== "undefined" &&
+//   ();
 export default function RootLayout({
   children,
 }: {

@@ -50,5 +50,6 @@ export const getServerSideConfig = () => {
     disableGPT4: !!process.env.DISABLE_GPT4,
     hideBalanceQuery: !process.env.ENABLE_BALANCE_QUERY,
     disableFastLink: !!process.env.DISABLE_FAST_LINK,
+    isDev: process.env.NODE_ENV !== "production",
   };
 };

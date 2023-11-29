@@ -3,7 +3,8 @@ services:
   chatgpt-next-web: 
     # profiles: ["no-proxy"]
     container_name: chatgpt-next-web
-    image: 172232502/chatgpt-next-web
+    restart: always
+    image: 172232502/chatgpt-next-web:latest
     ports:
       - 3080:3000
     volumes:
